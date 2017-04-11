@@ -16,6 +16,3 @@ WAST2WASM=$(TOOLS)/bin/bin/wast2wasm
 %.wasm : %.wast
 	${WAST2WASM} $< -o $@
 
-serve:
-	python3 -m http.server
-

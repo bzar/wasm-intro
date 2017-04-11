@@ -18,3 +18,7 @@ Simple function export example. Adds two numbers together and prints to console
 
 Same as Add, now with an added step of delegating the addition back to JavaScript.
 
+### Animation
+
+Some canvas functions imported to WASM, shows bouncing particles.
+

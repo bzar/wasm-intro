@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title></title>
+</head>
+<body>
+  <div id="content">
+    <canvas id="canvas" width="500" height="400"></canvas>
+  </div>
+  
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext('2d');
+const setFillColor = (r, g, b, a) => {
+  ctx.fillStyle = `rgba(${r},${g},${b},${a/255.0})`;
+}
+const fillRect = (x, y, w, h) => {
+  ctx.fillRect(x, y, w, h);
+}
+const getCanvasWidth = () => canvas.width;
+const getCanvasHeight = () => canvas.height;
+const env = {setFillColor, fillRect, getCanvasWidth, getCanvasHeight};
+
+fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
+  instance.exports.onInit();
+
+  const onAnimationFrame = instance.exports.onAnimationFrame;
+
+  function step(timestamp) {
+    onAnimationFrame(timestamp);
+    window.requestAnimationFrame(step);
+  }
+  window.requestAnimationFrame(step);
+});
+
+// fetchAndInstantiate() found in wasm-utils.js
+function fetchAndInstantiate(url, importObject) {
+  return fetch(url).then(response =>
+    response.arrayBuffer()
+  ).then(bytes =>
+    WebAssembly.instantiate(bytes, importObject)
+  ).then(results =>
+    results.instance
+  );
+}
+
+</script>
+</body>
+</html>
