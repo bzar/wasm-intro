@@ -1,0 +1,43 @@
+<script>
+let memory;
+
+const writeStr = (ptr, str) => {
+  for (let i = 0; i < str.length; ++i) {
+    memory[ptr + i] = str.codePointAt(i);
+  }
+}
+
+const readStr = (ptr, len) => {
+  let str = "";
+  for (let i = 0; i < len; ++i) {
+    str += String.fromCodePoint(memory[ptr + i]);
+    console.log(ptr, i, memory[ptr+i])
+  }
+  return str;
+}
+
+const consoleLog = (s, len) => {
+  console.log(readStr(s, len));
+};
+const env = {consoleLog};
+
+fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
+  memory = new Uint32Array(instance.exports.memory.buffer);
+  let ptr = 64;
+  let str = "Hello World!"
+  writeStr(ptr, str)
+  instance.exports.logTwice(ptr, str.length);
+});
+
+// fetchAndInstantiate() found in wasm-utils.js
+function fetchAndInstantiate(url, importObject) {
+  return fetch(url).then(response =>
+    response.arrayBuffer()
+  ).then(bytes =>
+    WebAssembly.instantiate(bytes, importObject)
+  ).then(results =>
+    results.instance
+  );
+}
+
+</script>
