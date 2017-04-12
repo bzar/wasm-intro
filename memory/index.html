@@ -1,0 +1,30 @@
+<script>
+const env = {};
+
+fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
+  const get = instance.exports.get;
+  const put = instance.exports.put;
+  let memory = new Uint32Array(instance.exports.memory.buffer);
+
+  console.log(0, '==', memory[16]);
+  console.log(0, '==', get(16));
+  memory[16] = 1;
+  console.log(1, '==', memory[16]);
+  console.log(1, '==', get(16));
+  console.log(2, '==', put(32, 2));
+  console.log(2, '==', memory[32]);
+  console.log(2, '==', get(32));
+});
+
+// fetchAndInstantiate() found in wasm-utils.js
+function fetchAndInstantiate(url, importObject) {
+  return fetch(url).then(response =>
+    response.arrayBuffer()
+  ).then(bytes =>
+    WebAssembly.instantiate(bytes, importObject)
+  ).then(results =>
+    results.instance
+  );
+}
+
+</script>
