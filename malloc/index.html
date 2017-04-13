@@ -1,0 +1,64 @@
+<script>
+let memory;
+const env = {};
+
+const writeStr = (ptr, str) => {
+  for (let i = 0; i < str.length; ++i) {
+    // Convert ptr to Uint32Array index
+    memory[ptr/4 + i] = str.codePointAt(i);
+  }
+}
+
+const readStr = (ptr, len) => {
+  let str = "";
+  // Convert ptr/len to Uint32Array indices
+  for (let i = 0; i < len/4; ++i) {
+    str += String.fromCodePoint(memory[ptr/4 + i]); 
+  }
+  return str;
+}
+
+fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
+  memory = new Uint32Array(instance.exports.memory.buffer);
+
+  const malloc = instance.exports.malloc;
+  const free = instance.exports.free;
+  const size = instance.exports.size;
+
+  const mallocStr = (str) => {
+    let ptr = malloc(str.length * 4); // 4 bytes per codepoint
+    writeStr(ptr, str);
+    return ptr;
+  }
+
+  const printStr = (ptr) => {
+    console.log(readStr(ptr, size(ptr)))
+  }
+
+  let a = mallocStr("Hello");
+  let b = mallocStr("World");
+  let c = mallocStr("!");
+  printStr(a);
+  printStr(b);
+  printStr(c);
+
+  free(b);
+  let d = mallocStr("WASM");
+  printStr(a);
+  printStr(d);
+  printStr(c);
+
+});
+
+// fetchAndInstantiate() found in wasm-utils.js
+function fetchAndInstantiate(url, importObject) {
+  return fetch(url).then(response =>
+    response.arrayBuffer()
+  ).then(bytes =>
+    WebAssembly.instantiate(bytes, importObject)
+  ).then(results =>
+    results.instance
+  );
+}
+
+</script>
