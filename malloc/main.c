@@ -28,7 +28,7 @@ void* malloc(unsigned int size) {
   return (void*) b + sizeof(Block);
 }
 
-void free(void* data) {
+void mfree(void* data) {
   Block* b = data - sizeof(Block);
   if(b->prev) b->prev->next = b->next;
   b->next = freeBlocks;
@@ -37,7 +37,7 @@ void free(void* data) {
   freeBlocks = b;
 }
 
-unsigned int size(void* data) {
+unsigned int msize(void* data) {
   Block* b = data - sizeof(Block);
   return b->usize;
 }

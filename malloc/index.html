@@ -22,8 +22,8 @@ fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
   memory = new Uint32Array(instance.exports.memory.buffer);
 
   const malloc = instance.exports.malloc;
-  const free = instance.exports.free;
-  const size = instance.exports.size;
+  const mfree = instance.exports.mfree;
+  const msize = instance.exports.msize;
 
   const mallocStr = (str) => {
     let ptr = malloc(str.length * 4); // 4 bytes per codepoint
@@ -32,7 +32,7 @@ fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
   }
 
   const printStr = (ptr) => {
-    console.log(readStr(ptr, size(ptr)))
+    console.log(readStr(ptr, msize(ptr)))
   }
 
   let a = mallocStr("Hello");
@@ -42,7 +42,7 @@ fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
   printStr(b);
   printStr(c);
 
-  free(b);
+  mfree(b);
   let d = mallocStr("WASM");
   printStr(a);
   printStr(d);
