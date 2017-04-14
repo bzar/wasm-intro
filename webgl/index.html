@@ -30,6 +30,7 @@ const getCanvasHeight = () => canvas.height;
 const shaders = [];
 const glPrograms = [];
 const glBuffers = [];
+const glUniformLocations = [];
 
 const compileShader = (sourcePtr, type) => {
   const source = readCharStr(sourcePtr, msize(sourcePtr));
@@ -60,6 +61,11 @@ const glEnable = x => gl.enable(x);
 const glDepthFunc = x => gl.depthFunc(x);
 const glClear = x => gl.clear(x);
 const glGetAttribLocation = (programId, namePtr) => gl.getAttribLocation(glPrograms[programId], readCharStr(namePtr, msize(namePtr)));
+const glGetUniformLocation = (programId, namePtr) =>  {
+  glUniformLocations.push(gl.getUniformLocation(glPrograms[programId], readCharStr(namePtr, msize(namePtr))));
+  return glUniformLocations.length - 1;
+}
+const glUniform4fv = (locationId, x, y, z, w) => gl.uniform4fv(glUniformLocations[locationId], [x, y, z, w]);
 const glCreateBuffer = () => {
   glBuffers.push(gl.createBuffer());
   return glBuffers.length - 1;
@@ -76,7 +82,7 @@ const glVertexAttribPointer = (attribLocation, size, type, normalize, stride, of
 }
 const glDrawArrays = (type, offset, count) => gl.drawArrays(type, offset, count);
 
-const env = {getCanvasWidth, getCanvasHeight, compileShader, linkShaderProgram, glClearColor, glEnable, glDepthFunc, glClear, glGetAttribLocation, glCreateBuffer, glBindBuffer, glBufferData, glUseProgram, glEnableVertexAttribArray, glVertexAttribPointer, glDrawArrays};
+const env = {getCanvasWidth, getCanvasHeight, compileShader, linkShaderProgram, glClearColor, glEnable, glDepthFunc, glClear, glGetAttribLocation, glGetUniformLocation, glUniform4fv, glCreateBuffer, glBindBuffer, glBufferData, glUseProgram, glEnableVertexAttribArray, glVertexAttribPointer, glDrawArrays};
 
 fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
   memory = instance.exports.memory;
