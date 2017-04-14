@@ -10,13 +10,79 @@
   </div>
   
 <script>
+let memory, malloc, mfree, msize;
+
+const readCharStr = (ptr, len) => {
+  const bytes = new Uint8Array(memory.buffer, ptr, len);
+  let s = "";
+  for(let i = 0; i < len; ++i) {
+    s += String.fromCharCode(bytes[i]);
+  }
+  return s;
+}
+
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext('2d');
+const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+gl.viewport(0, 0, canvas.width, canvas.height);
 const getCanvasWidth = () => canvas.width;
 const getCanvasHeight = () => canvas.height;
-const env = {getCanvasWidth, getCanvasHeight};
+
+const shaders = [];
+const glPrograms = [];
+const glBuffers = [];
+
+const compileShader = (sourcePtr, type) => {
+  const source = readCharStr(sourcePtr, msize(sourcePtr));
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if(!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    throw "Error compiling shader:" + gl.getShaderInfoLog(shader);
+  }
+  shaders.push(shader);
+  return shaders.length - 1;
+}
+
+const linkShaderProgram = (vertexShaderId, fragmentShaderId) => {
+  const program = gl.createProgram();
+  gl.attachShader(program, shaders[vertexShaderId]);
+  gl.attachShader(program, shaders[fragmentShaderId]);
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    throw ("Error linking program:" + gl.getProgramInfoLog (program));
+  }
+  glPrograms.push(program);
+  return glPrograms.length - 1;
+}
+
+const glClearColor = (r, g, b, a) => gl.clearColor(r, g, b, a);
+const glEnable = x => gl.enable(x);
+const glDepthFunc = x => gl.depthFunc(x);
+const glClear = x => gl.clear(x);
+const glGetAttribLocation = (programId, namePtr) => gl.getAttribLocation(glPrograms[programId], readCharStr(namePtr, msize(namePtr)));
+const glCreateBuffer = () => {
+  glBuffers.push(gl.createBuffer());
+  return glBuffers.length - 1;
+}
+const glBindBuffer = (type, bufferId) => gl.bindBuffer(type, glBuffers[bufferId]);
+const glBufferData = (type, dataPtr, count, drawType) => {
+  const floats = new Float32Array(memory.buffer, dataPtr, count);
+  gl.bufferData(type, floats, drawType);
+}
+const glUseProgram = (programId) => gl.useProgram(glPrograms[programId]);
+const glEnableVertexAttribArray = (x) => gl.enableVertexAttribArray(x);
+const glVertexAttribPointer = (attribLocation, size, type, normalize, stride, offset) => {
+  gl.vertexAttribPointer(attribLocation, size, type, normalize, stride, offset);
+}
+const glDrawArrays = (type, offset, count) => gl.drawArrays(type, offset, count);
+
+const env = {getCanvasWidth, getCanvasHeight, compileShader, linkShaderProgram, glClearColor, glEnable, glDepthFunc, glClear, glGetAttribLocation, glCreateBuffer, glBindBuffer, glBufferData, glUseProgram, glEnableVertexAttribArray, glVertexAttribPointer, glDrawArrays};
 
 fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
+  memory = instance.exports.memory;
+  malloc = instance.exports.malloc;
+  mfree = instance.exports.mfree;
+  msize = instance.exports.msize;
   instance.exports.onInit();
 
   const onAnimationFrame = instance.exports.onAnimationFrame;
