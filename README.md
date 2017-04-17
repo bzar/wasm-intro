@@ -1,6 +1,8 @@
 # WASM-Intro
 
-A scratchpad of stuff in WebAssembly
+A scratchpad of stuff in WebAssembly. All examples are written for simplicity, not good code style nor performance. Please do not use anything here in important stuff.
+
+Much of the toolchain is based on [yurydelendik's "Using WebAssembly in LLVM" gist](https://gist.github.com/yurydelendik/4eeff8248aeb14ce763e).
 
 ## Build environment
 
