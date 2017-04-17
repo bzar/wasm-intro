@@ -10,7 +10,7 @@
   </div>
   
 <script>
-let memory, malloc, mfree, msize;
+let memory;
 
 const readCharStr = (ptr, len) => {
   const bytes = new Uint8Array(memory.buffer, ptr, len);
@@ -24,16 +24,14 @@ const readCharStr = (ptr, len) => {
 const canvas = document.getElementById("canvas");
 const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 gl.viewport(0, 0, canvas.width, canvas.height);
-const getCanvasWidth = () => canvas.width;
-const getCanvasHeight = () => canvas.height;
 
 const shaders = [];
 const glPrograms = [];
 const glBuffers = [];
 const glUniformLocations = [];
 
-const compileShader = (sourcePtr, type) => {
-  const source = readCharStr(sourcePtr, msize(sourcePtr));
+const compileShader = (sourcePtr, sourceLen, type) => {
+  const source = readCharStr(sourcePtr, sourceLen);
   const shader = gl.createShader(type);
   gl.shaderSource(shader, source);
   gl.compileShader(shader);
@@ -60,9 +58,9 @@ const glClearColor = (r, g, b, a) => gl.clearColor(r, g, b, a);
 const glEnable = x => gl.enable(x);
 const glDepthFunc = x => gl.depthFunc(x);
 const glClear = x => gl.clear(x);
-const glGetAttribLocation = (programId, namePtr) => gl.getAttribLocation(glPrograms[programId], readCharStr(namePtr, msize(namePtr)));
-const glGetUniformLocation = (programId, namePtr) =>  {
-  glUniformLocations.push(gl.getUniformLocation(glPrograms[programId], readCharStr(namePtr, msize(namePtr))));
+const glGetAttribLocation = (programId, namePtr, nameLen) => gl.getAttribLocation(glPrograms[programId], readCharStr(namePtr, nameLen));
+const glGetUniformLocation = (programId, namePtr, nameLen) =>  {
+  glUniformLocations.push(gl.getUniformLocation(glPrograms[programId], readCharStr(namePtr, nameLen)));
   return glUniformLocations.length - 1;
 }
 const glUniform4fv = (locationId, x, y, z, w) => gl.uniform4fv(glUniformLocations[locationId], [x, y, z, w]);
@@ -82,13 +80,10 @@ const glVertexAttribPointer = (attribLocation, size, type, normalize, stride, of
 }
 const glDrawArrays = (type, offset, count) => gl.drawArrays(type, offset, count);
 
-const env = {getCanvasWidth, getCanvasHeight, compileShader, linkShaderProgram, glClearColor, glEnable, glDepthFunc, glClear, glGetAttribLocation, glGetUniformLocation, glUniform4fv, glCreateBuffer, glBindBuffer, glBufferData, glUseProgram, glEnableVertexAttribArray, glVertexAttribPointer, glDrawArrays};
+const env = {compileShader, linkShaderProgram, glClearColor, glEnable, glDepthFunc, glClear, glGetAttribLocation, glGetUniformLocation, glUniform4fv, glCreateBuffer, glBindBuffer, glBufferData, glUseProgram, glEnableVertexAttribArray, glVertexAttribPointer, glDrawArrays};
 
 fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
   memory = instance.exports.memory;
-  malloc = instance.exports.malloc;
-  mfree = instance.exports.mfree;
-  msize = instance.exports.msize;
   instance.exports.onInit();
 
   const onAnimationFrame = instance.exports.onAnimationFrame;
@@ -100,7 +95,6 @@ fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
   window.requestAnimationFrame(step);
 });
 
-// fetchAndInstantiate() found in wasm-utils.js
 function fetchAndInstantiate(url, importObject) {
   return fetch(url).then(response =>
     response.arrayBuffer()
