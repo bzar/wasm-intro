@@ -24,3 +24,6 @@ Same as Add, now with an added step of delegating the addition back to JavaScrip
 
 Some canvas functions imported to WASM, shows bouncing particles.
 
+### WebGL
+
+Wraps a portion of WebGL API for importing to WASM, draws a moving triangle.
