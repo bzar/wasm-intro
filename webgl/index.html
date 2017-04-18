@@ -14,11 +14,7 @@ let memory;
 
 const readCharStr = (ptr, len) => {
   const bytes = new Uint8Array(memory.buffer, ptr, len);
-  let s = "";
-  for(let i = 0; i < len; ++i) {
-    s += String.fromCharCode(bytes[i]);
-  }
-  return s;
+  return new TextDecoder("utf-8").decode(bytes);
 }
 
 const canvas = document.getElementById("canvas");
