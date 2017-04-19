@@ -28,6 +28,6 @@ Some canvas functions imported to WASM, shows bouncing particles.
 
 Wraps a portion of WebGL API for importing to WASM, draws a moving triangle.
 
-### WebGL
+### Pong
 
 Wraps a little more of WebGL API for importing to WASM, plays Pong.
