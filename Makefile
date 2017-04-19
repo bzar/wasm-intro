@@ -10,9 +10,9 @@ WAST2WASM=$(TOOLS)/bin/bin/wast2wasm
 %.s : %.bc
 	${LLC} $< -o $@
 
-%.wast : %.s
+%.wat : %.s
 	${S2WASM} $< > $@
 
-%.wasm : %.wast
+%.wasm : %.wat
 	${WAST2WASM} $< -o $@
 
