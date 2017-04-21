@@ -23,6 +23,7 @@ extern void glTexParameteri(unsigned int, unsigned int, unsigned int);
 extern void glActiveTexture(unsigned int);
 
 extern void consoleLog(unsigned int);
+extern void playAudio(float*, unsigned int);
 extern void setScore(unsigned int, unsigned int);
 
 // Identifier constants pulled from WebGLRenderingContext
@@ -106,6 +107,24 @@ unsigned char const FIELD_TEXTURE[] = {
   0x33,0x33,0x33,0xFF, 0x22,0x22,0x22,0xFF, 0x11,0x11,0x11,0xFF, 0x66,0x66,0x66,0xFF, 0x55,0x55,0x55,0xFF, 0x11,0x11,0x11,0xFF, 0x22,0x22,0x22,0xFF, 0x33,0x33,0x33,0xFF, 
   0x33,0x33,0x33,0xFF, 0x22,0x22,0x22,0xFF, 0x11,0x11,0x11,0xFF, 0x55,0x55,0x55,0xFF, 0x66,0x66,0x66,0xFF, 0x11,0x11,0x11,0xFF, 0x22,0x22,0x22,0xFF, 0x33,0x33,0x33,0xFF, 
 };
+
+float const SPARK_VERTICES[] = {
+  -0.01,-0.01,0,0, 0.01,0.01,1,1, -0.01,0.01,0,1,
+  -0.01,-0.01,0,0, 0.01,-0.01,1,0, 0.01,0.01,1,1
+};
+
+unsigned char const SPARK_TEXTURE[] = {
+  0x00,0x00,0x00,0x00, 0xFF,0xFF,0x00,0xFF, 0xFF,0xFF,0x00,0xFF, 0x00,0x00,0x00,0x00,
+  0xFF,0xFF,0x00,0xFF, 0xFF,0xFF,0x88,0xFF, 0xFF,0xFF,0x88,0xFF, 0xFF,0xFF,0x00,0xFF,
+  0xFF,0xFF,0x00,0xFF, 0xFF,0xFF,0x88,0xFF, 0xFF,0xFF,0x88,0xFF, 0xFF,0xFF,0x00,0xFF,
+  0x00,0x00,0x00,0x00, 0xFF,0xFF,0x00,0xFF, 0xFF,0xFF,0x00,0xFF, 0x00,0x00,0x00,0x00,
+};
+
+unsigned int const AUDIO_BUFFER_SIZE = 8192;
+float beep[AUDIO_BUFFER_SIZE] = { 0 };
+float boop[AUDIO_BUFFER_SIZE] = { 0 };
+float bloop[AUDIO_BUFFER_SIZE] = { 0 };
+
 float const PADDLE_SPEED = 0.001;
 float const BALL_SPEED = 0.0012;
 
@@ -137,6 +156,25 @@ typedef struct Ball {
   Vec2 velocity;
 } Ball;
 
+typedef struct Particle {
+  Vec2 position;
+  Vec2 velocity;
+  Vec2 acceleration;
+  unsigned int life;
+} Particle;
+
+unsigned int const MAX_PARTICLES = 100;
+
+typedef struct ParticleSystem {
+  Particle particles[MAX_PARTICLES];
+  Model* model;
+  unsigned int alive;
+} ParticleSystem;
+
+void createParticle(ParticleSystem*, float x, float y, float vx, float vy, float ax, float ay, int life);
+void updateParticleSystem(ParticleSystem*, unsigned int);
+void renderParticleSystem(ParticleSystem const*);
+
 unsigned int programId;
 int positionAttributeLocation;
 int texcoordAttributeLocation;
@@ -147,10 +185,13 @@ unsigned int positionBuffer;
 Model ballModel = {0, 0, 0, {}};
 Model paddleModel = {0, 0, 0, {}};
 Model fieldModel = {0, 0, 0, {}};
+Model sparkModel = {0, 0, 0, {}};
+
 Ball ball = { { {0, 0}, &ballModel }, {1, 1} };
 Paddle left = { { {-0.9, 0}, &paddleModel }, 0, 0};
 Paddle right = { { {0.9, 0}, &paddleModel }, 0, 0};
 Sprite field = { {0, 0}, &fieldModel };
+ParticleSystem sparks = { { { {0,0}, {0,0}, {0,0}, 0 } }, &sparkModel, 0 };
 
 unsigned int leftScore = 0;
 unsigned int rightScore = 0;
@@ -177,6 +218,8 @@ void initModel(Model* m, float const vertices[], unsigned int numVertices, unsig
     m->extent.x = fx > m->extent.x ? fx : -fx > m->extent.x ? -fx : m->extent.x;
     m->extent.y = fy > m->extent.y ? fy : -fy > m->extent.y ? -fy : m->extent.y;
   }
+  m->extent.x *= 0.9;
+  m->extent.y *= 0.9;
 }
 
 void onInit() {
@@ -198,9 +241,21 @@ void onInit() {
   unsigned int ballTextureId = initTexture(BALL_TEXTURE, 4, 4);
   unsigned int paddleTextureId = initTexture(PADDLE_TEXTURE, 8, 8);
   unsigned int fieldTextureId = initTexture(FIELD_TEXTURE, 8, 8);
+  unsigned int sparkTextureId = initTexture(SPARK_TEXTURE, 4, 4);
   initModel(&ballModel, BALL_VERTICES, sizeof(BALL_VERTICES)/sizeof(float), ballTextureId);
   initModel(&paddleModel, PADDLE_VERTICES, sizeof(PADDLE_VERTICES)/sizeof(float), paddleTextureId);
   initModel(&fieldModel, FIELD_VERTICES, sizeof(FIELD_VERTICES)/sizeof(float), fieldTextureId);
+  initModel(&sparkModel, SPARK_VERTICES, sizeof(SPARK_VERTICES)/sizeof(float), sparkTextureId);
+
+  for(unsigned int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
+    beep[i] = (i/64)%2 ? 0.1 : -0.1;
+  }
+  for(unsigned int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
+    boop[i] = (i/128)%2 ? 0.1 : -0.1;
+  }
+  for(unsigned int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
+    bloop[i] = beep[i]/2 + boop[i]/2;
+  }
 }
 
 void renderSprites(Sprite* const* ss, unsigned int n) {
@@ -228,6 +283,15 @@ char spriteCollide(Sprite* a, Sprite* b) {
     (a->position.y < b->position.y ? b->position.y - a->position.y : a->position.y - b->position.y) < a->model->extent.y + b->model->extent.y;
 }
 
+void createSparks(ParticleSystem* ps, float x, float y, float dx, float dy) {
+  for(unsigned int i = 0; i < 4; ++i) {
+    float ddx = (i+1)*dx/10.0f;
+    float ddy = (i+1)*dy/10.0f;
+    createParticle(ps, x, y, dy+ddx, -dx+ddy, 0, 0, 100);
+    createParticle(ps, x, y, -dy+ddx, dx+ddy, 0, 0, 100);
+  }
+}
+
 void onAnimationFrame(int timestamp) {
   static int previous = 0;
 
@@ -240,30 +304,50 @@ void onAnimationFrame(int timestamp) {
   if(spriteCollide(&ball.sprite, &left.sprite) || spriteCollide(&ball.sprite, &right.sprite)) {
     ball.velocity.x = -ball.velocity.x;
     ball.sprite.position.x += ball.velocity.x * BALL_SPEED * delta;
+    createSparks(&sparks,
+        (ball.velocity.x > 0 ? -1 : 1) * ball.sprite.model->extent.x + ball.sprite.position.x,
+        ball.sprite.position.y, 2*ball.velocity.x, 0);
+    playAudio(beep, AUDIO_BUFFER_SIZE);
   } else if(ball.sprite.position.x > 1.05) {
     ball.sprite.position.x = 0;
     ball.velocity.x = 1 - 2 * (timestamp % 2);
     ball.velocity.y = 1 - 2 * ((timestamp/7) % 2);
     leftScore += 1;
     setScore(0, leftScore);
+    playAudio(bloop, AUDIO_BUFFER_SIZE);
   } else if(ball.sprite.position.x < -1.05) {
     ball.sprite.position.x = 0;
     ball.velocity.x = 1 - 2 * (timestamp % 2);
     ball.velocity.y = 1 - 2 * ((timestamp/7) % 2);
     rightScore += 1;
     setScore(1, rightScore);
+    playAudio(bloop, AUDIO_BUFFER_SIZE);
   }
 
   ball.sprite.position.y += ball.velocity.y * BALL_SPEED * delta;
   if(spriteCollide(&ball.sprite, &left.sprite) || spriteCollide(&ball.sprite, &right.sprite)) {
     ball.velocity.y = -ball.velocity.y;
     ball.sprite.position.y += ball.velocity.y * BALL_SPEED * delta;
+    createSparks(&sparks, ball.sprite.position.x,
+        (ball.velocity.y > 0 ? -1 : 1) * ball.sprite.model->extent.y + ball.sprite.position.y,
+        0, 2*ball.velocity.y);
+    playAudio(beep, AUDIO_BUFFER_SIZE);
   } else if(ball.sprite.position.y > 0.95) {
     ball.velocity.y = -1;
+    createSparks(&sparks, ball.sprite.position.x,
+        ball.sprite.model->extent.y + ball.sprite.position.y,
+        0, 2*ball.velocity.y);
+    playAudio(boop, AUDIO_BUFFER_SIZE);
   } else if(ball.sprite.position.y < -0.95) {
     ball.velocity.y = 1;
+    createSparks(&sparks, ball.sprite.position.x,
+        -ball.sprite.model->extent.y + ball.sprite.position.y,
+        0, 2*ball.velocity.y);
+    playAudio(boop, AUDIO_BUFFER_SIZE);
   }
-  
+
+  updateParticleSystem(&sparks, delta);
+
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   glUseProgram(programId);
@@ -275,6 +359,8 @@ void onAnimationFrame(int timestamp) {
   renderSprites(paddles, 2);
   Sprite* const balls[] = {&ball.sprite};
   renderSprites(balls, 1);
+
+  renderParticleSystem(&sparks);
 
   previous = timestamp;
 }
@@ -300,5 +386,58 @@ void onKey(unsigned int keyCode, char state) {
       break;
     default:
       break;
+  }
+}
+
+void createParticle(ParticleSystem* ps, float x, float y, float vx, float vy, float ax, float ay, int life) {
+  if(ps->alive < MAX_PARTICLES) {
+    Particle* np = &ps->particles[ps->alive];
+    np->position.x = x;
+    np->position.y = y;
+    np->velocity.x = vx;
+    np->velocity.y = vy;
+    np->acceleration.x = ax;
+    np->acceleration.y = ay;
+    np->life = life;
+    ps->alive += 1;
+  }
+}
+
+void updateParticleSystem(ParticleSystem* ps, unsigned int delta) {
+  for(unsigned int i = 0; i < ps->alive; ++i) {
+    Particle* p = &ps->particles[i];
+    if(delta > p->life) {
+      ps->alive -= 1;
+      if(i < ps->alive) {
+        Particle* np = &ps->particles[ps->alive];
+        p->position = np->position;
+        p->velocity = np->velocity;
+        p->acceleration = np->acceleration;
+        p->life = np->life;
+        i -= 1;
+      }
+    } else {
+      p->life -= delta;
+      p->velocity.x += p->acceleration.x * delta / 1000.0f;
+      p->velocity.y += p->acceleration.y * delta / 1000.0f;
+      p->position.x += p->velocity.x * delta / 1000.0f;
+      p->position.y += p->velocity.y * delta / 1000.0f;
+    }
+  }
+}
+
+void renderParticleSystem(ParticleSystem const* ps) {
+  glBindBuffer(GL_ARRAY_BUFFER, ps->model->vertexBufferId);
+  glActiveTexture(GL_TEXTURE0);
+  glBindTexture(GL_TEXTURE_2D, ps->model->textureId);
+  glVertexAttribPointer(positionAttributeLocation, 2, GL_FLOAT, 0, 16, 0);
+  glVertexAttribPointer(texcoordAttributeLocation, 2, GL_FLOAT, 0, 16, 8);
+  glUniform1i(samplerUniformLocation, 0);
+
+  unsigned int numTriangles = ps->model->numVertices / 4;
+  for(unsigned int i = 0; i < ps->alive; ++i) {
+    Particle const* p = &ps->particles[i];
+    glUniform4fv(offsetUniformLocation, p->position.x, p->position.y, 0.0f, 0.0f);
+    glDrawArrays(GL_TRIANGLES, 0, numTriangles);
   }
 }

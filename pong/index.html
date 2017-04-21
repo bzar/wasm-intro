@@ -25,6 +25,9 @@ const readCharStr = (ptr, len) => {
   return s;
 }
 
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const audioBuffer = audioCtx.createBuffer(1, audioCtx.sampleRate*2.0, audioCtx.sampleRate);
+
 const canvas = document.getElementById("canvas");
 const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 gl.viewport(0, 0, canvas.width, canvas.height);
@@ -100,8 +103,15 @@ const glTexParameteri = (target, pname, param) => gl.texParameteri(target, pname
 const glActiveTexture = (target) => gl.activeTexture(target);
 
 const setScore = (player, score) => document.getElementById("score" + player).textContent = ""  + score;
+const playAudio = (bufferPtr, bufferSize) => {
+  audioBuffer.copyToChannel(new Float32Array(memory.buffer, bufferPtr, bufferSize), 0);
+  const source = audioCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(audioCtx.destination);
+  source.start();
+}
 
-const env = {compileShader, linkShaderProgram, glClearColor, glEnable, glDepthFunc, glClear, glGetAttribLocation, glGetUniformLocation, glUniform4fv, glUniform1i, glCreateBuffer, glBindBuffer, glBufferData, glUseProgram, glEnableVertexAttribArray, glVertexAttribPointer, glDrawArrays, glCreateTexture, glBindTexture, glTexImage2D, glTexParameteri, glActiveTexture, consoleLog, setScore};
+const env = {compileShader, linkShaderProgram, glClearColor, glEnable, glDepthFunc, glClear, glGetAttribLocation, glGetUniformLocation, glUniform4fv, glUniform1i, glCreateBuffer, glBindBuffer, glBufferData, glUseProgram, glEnableVertexAttribArray, glVertexAttribPointer, glDrawArrays, glCreateTexture, glBindTexture, glTexImage2D, glTexParameteri, glActiveTexture, consoleLog, playAudio, setScore};
 
 fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
   memory = instance.exports.memory;
