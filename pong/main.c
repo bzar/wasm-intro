@@ -4,11 +4,13 @@ extern unsigned int linkShaderProgram(unsigned int vertexShaderId, unsigned int 
 extern void glClearColor(float, float, float, float);
 extern void glEnable(unsigned int);
 extern void glDepthFunc(unsigned int);
+extern void glBlendFunc(unsigned int, unsigned int);
 extern void glClear(unsigned int);
 extern int glGetAttribLocation(unsigned int, char const*, unsigned int);
 extern int glGetUniformLocation(unsigned int, char const*, unsigned int);
 extern void glUniform4fv(int, float, float, float, float);
 extern void glUniform1i(int, int);
+extern void glUniform1f(int, float);
 extern unsigned int glCreateBuffer();
 extern void glBindBuffer(unsigned int, unsigned int);
 extern void glBufferData(unsigned int, float const*, unsigned int, unsigned int);
@@ -27,25 +29,31 @@ extern void playAudio(float*, unsigned int);
 extern void setScore(unsigned int, unsigned int);
 
 // Identifier constants pulled from WebGLRenderingContext
-unsigned int GL_VERTEX_SHADER = 35633;
-unsigned int GL_FRAGMENT_SHADER = 35632;
-unsigned int GL_ARRAY_BUFFER = 34962;
-unsigned int GL_TRIANGLES = 4;
-unsigned int GL_STATIC_DRAW = 35044;
-unsigned int GL_FLOAT = 5126;
-unsigned int GL_DEPTH_TEST = 2929;
-unsigned int GL_LEQUAL = 515;
-unsigned int GL_COLOR_BUFFER_BIT = 16384;
-unsigned int GL_DEPTH_BUFFER_BIT = 256;
-unsigned int GL_TEXTURE_2D = 3553;
-unsigned int GL_RGBA = 6408;
-unsigned int GL_UNSIGNED_BYTE = 5121;
-unsigned int GL_TEXTURE_MAG_FILTER = 10240;
-unsigned int GL_TEXTURE_MIN_FILTER = 10241;
-unsigned int GL_NEAREST = 9728;
-unsigned int GL_TEXTURE0 = 33984;
+unsigned int const GL_VERTEX_SHADER = 35633;
+unsigned int const GL_FRAGMENT_SHADER = 35632;
+unsigned int const GL_ARRAY_BUFFER = 34962;
+unsigned int const GL_TRIANGLES = 4;
+unsigned int const GL_STATIC_DRAW = 35044;
+unsigned int const GL_FLOAT = 5126;
+unsigned int const GL_DEPTH_TEST = 2929;
+unsigned int const GL_LEQUAL = 515;
+unsigned int const GL_COLOR_BUFFER_BIT = 16384;
+unsigned int const GL_DEPTH_BUFFER_BIT = 256;
+unsigned int const GL_TEXTURE_2D = 3553;
+unsigned int const GL_RGBA = 6408;
+unsigned int const GL_UNSIGNED_BYTE = 5121;
+unsigned int const GL_TEXTURE_MAG_FILTER = 10240;
+unsigned int const GL_TEXTURE_MIN_FILTER = 10241;
+unsigned int const GL_NEAREST = 9728;
+unsigned int const GL_TEXTURE0 = 33984;
+unsigned int const GL_BLEND = 3042;
+unsigned int const GL_SRC_ALPHA = 770;
+unsigned int const GL_ONE_MINUS_SRC_ALPHA = 771;
+unsigned int const GL_ONE= 1;
 
-char vertexShader[] = 
+
+
+char const vertexShader[] =
 "attribute vec2 a_position;"
 "attribute vec2 a_texcoord;"
 "uniform vec4 u_offset;"
@@ -55,13 +63,14 @@ char vertexShader[] =
 "  v_texcoord = a_texcoord;"
 "}";
 
-char fragmentShader[] =
+char const fragmentShader[] =
 "precision mediump float;"
 "varying mediump vec2 v_texcoord;"
 "uniform sampler2D u_sampler;"
+"uniform float u_opacity;"
 "void main() {"
 " gl_FragColor = texture2D(u_sampler, v_texcoord);"
-" if(gl_FragColor.a < 0.01) discard;"
+" gl_FragColor.a *= u_opacity;"
 "}";
 
 float const BALL_VERTICES[] = {
@@ -71,9 +80,15 @@ float const BALL_VERTICES[] = {
 
 unsigned char const BALL_TEXTURE[] = {
   0x00,0x00,0x00,0x00, 0xDD,0x00,0x00,0xFF, 0xDD,0x00,0x00,0xFF, 0x00,0x00,0x00,0x00,
-  0xDD,0x00,0x00,0xFF, 0xFF,0x00,0x00,0xFF, 0xFF,0x00,0x00,0xFF, 0xDD,0x00,0x00,0xFF,
-  0xDD,0x00,0x00,0xFF, 0xFF,0x00,0x00,0xFF, 0xFF,0x66,0x66,0xFF, 0xDD,0x00,0x00,0xFF,
+  0xDD,0x00,0x00,0xFF, 0xFF,0x00,0x00,0xFF, 0xFF,0x44,0x44,0xFF, 0xDD,0x00,0x00,0xFF,
+  0xDD,0x00,0x00,0xFF, 0xFF,0x44,0x44,0xFF, 0xFF,0x88,0x88,0xFF, 0xDD,0x00,0x00,0xFF,
   0x00,0x00,0x00,0x00, 0xDD,0x00,0x00,0xFF, 0xDD,0x00,0x00,0xFF, 0x00,0x00,0x00,0x00
+};
+unsigned char const BALL_TAIL_TEXTURE[] = {
+  0x00,0x00,0x00,0x00, 0xFF,0x00,0x00,0xCC, 0xFF,0x00,0x00,0xCC, 0x00,0x00,0x00,0x00,
+  0xFF,0x00,0x00,0xCC, 0xFF,0x00,0x00,0xCC, 0xFF,0x00,0x00,0xCC, 0xFF,0x00,0x00,0xCC,
+  0xFF,0x00,0x00,0xCC, 0xFF,0x00,0x00,0xCC, 0xFF,0x00,0x00,0xCC, 0xFF,0x00,0x00,0xCC,
+  0x00,0x00,0x00,0x00, 0xFF,0x00,0x00,0xCC, 0xFF,0x00,0x00,0xCC, 0x00,0x00,0x00,0x00
 };
 
 float const PADDLE_VERTICES[] = {
@@ -161,6 +176,7 @@ typedef struct Particle {
   Vec2 velocity;
   Vec2 acceleration;
   unsigned int life;
+  unsigned int totalLife;
 } Particle;
 
 unsigned int const MAX_PARTICLES = 100;
@@ -180,9 +196,11 @@ int positionAttributeLocation;
 int texcoordAttributeLocation;
 int offsetUniformLocation;
 int samplerUniformLocation;
+int opacityUniformLocation;
 unsigned int positionBuffer;
 
 Model ballModel = {0, 0, 0, {}};
+Model ballTailModel = {0, 0, 0, {}};
 Model paddleModel = {0, 0, 0, {}};
 Model fieldModel = {0, 0, 0, {}};
 Model sparkModel = {0, 0, 0, {}};
@@ -191,7 +209,8 @@ Ball ball = { { {0, 0}, &ballModel }, {1, 1} };
 Paddle left = { { {-0.9, 0}, &paddleModel }, 0, 0};
 Paddle right = { { {0.9, 0}, &paddleModel }, 0, 0};
 Sprite field = { {0, 0}, &fieldModel };
-ParticleSystem sparks = { { { {0,0}, {0,0}, {0,0}, 0 } }, &sparkModel, 0 };
+ParticleSystem sparks = { { { {0,0}, {0,0}, {0,0}, 0, 0 } }, &sparkModel, 0 };
+ParticleSystem ballTail = { { { {0,0}, {0,0}, {0,0}, 0, 0 } }, &ballTailModel, 0 };
 
 unsigned int leftScore = 0;
 unsigned int rightScore = 0;
@@ -225,7 +244,9 @@ void initModel(Model* m, float const vertices[], unsigned int numVertices, unsig
 void onInit() {
   glClearColor(0.1, 0.1, 0.1, 1.0);
   glEnable(GL_DEPTH_TEST);
+  glEnable(GL_BLEND);
   glDepthFunc(GL_LEQUAL);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   unsigned int vsId = compileShader(vertexShader, sizeof(vertexShader) - 1, GL_VERTEX_SHADER);
@@ -237,23 +258,22 @@ void onInit() {
   texcoordAttributeLocation = glGetAttribLocation(programId, "a_texcoord", sizeof("a_texcoord") - 1);
   offsetUniformLocation = glGetUniformLocation(programId, "u_offset", sizeof("u_offset") - 1);
   samplerUniformLocation = glGetUniformLocation(programId, "u_sampler", sizeof("u_sampler") - 1);
+  opacityUniformLocation = glGetUniformLocation(programId, "u_opacity", sizeof("u_opacity") - 1);
 
   unsigned int ballTextureId = initTexture(BALL_TEXTURE, 4, 4);
+  unsigned int ballTailTextureId = initTexture(BALL_TAIL_TEXTURE, 4, 4);
   unsigned int paddleTextureId = initTexture(PADDLE_TEXTURE, 8, 8);
   unsigned int fieldTextureId = initTexture(FIELD_TEXTURE, 8, 8);
   unsigned int sparkTextureId = initTexture(SPARK_TEXTURE, 4, 4);
   initModel(&ballModel, BALL_VERTICES, sizeof(BALL_VERTICES)/sizeof(float), ballTextureId);
+  initModel(&ballTailModel, BALL_VERTICES, sizeof(BALL_VERTICES)/sizeof(float), ballTailTextureId);
   initModel(&paddleModel, PADDLE_VERTICES, sizeof(PADDLE_VERTICES)/sizeof(float), paddleTextureId);
   initModel(&fieldModel, FIELD_VERTICES, sizeof(FIELD_VERTICES)/sizeof(float), fieldTextureId);
   initModel(&sparkModel, SPARK_VERTICES, sizeof(SPARK_VERTICES)/sizeof(float), sparkTextureId);
 
   for(unsigned int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
     beep[i] = (i/64)%2 ? 0.1 : -0.1;
-  }
-  for(unsigned int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
     boop[i] = (i/128)%2 ? 0.1 : -0.1;
-  }
-  for(unsigned int i = 0; i < AUDIO_BUFFER_SIZE; ++i) {
     bloop[i] = beep[i]/2 + boop[i]/2;
   }
 }
@@ -265,6 +285,7 @@ void renderSprites(Sprite* const* ss, unsigned int n) {
   glVertexAttribPointer(positionAttributeLocation, 2, GL_FLOAT, 0, 16, 0);
   glVertexAttribPointer(texcoordAttributeLocation, 2, GL_FLOAT, 0, 16, 8);
   glUniform1i(samplerUniformLocation, 0);
+  glUniform1f(opacityUniformLocation, 1.0f);
 
   unsigned int numTriangles = ss[0]->model->numVertices / 4;
   for(unsigned int i = 0; i < n; ++i) {
@@ -346,7 +367,10 @@ void onAnimationFrame(int timestamp) {
     playAudio(boop, AUDIO_BUFFER_SIZE);
   }
 
+  createParticle(&ballTail, ball.sprite.position.x, ball.sprite.position.y,0,0, 0, 0, 1000);
+
   updateParticleSystem(&sparks, delta);
+  updateParticleSystem(&ballTail, delta);
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -357,6 +381,7 @@ void onAnimationFrame(int timestamp) {
   renderSprites(fields, 1);
   Sprite* const paddles[] = {&left.sprite, &right.sprite};
   renderSprites(paddles, 2);
+  renderParticleSystem(&ballTail);
   Sprite* const balls[] = {&ball.sprite};
   renderSprites(balls, 1);
 
@@ -399,6 +424,7 @@ void createParticle(ParticleSystem* ps, float x, float y, float vx, float vy, fl
     np->acceleration.x = ax;
     np->acceleration.y = ay;
     np->life = life;
+    np->totalLife = life;
     ps->alive += 1;
   }
 }
@@ -414,6 +440,7 @@ void updateParticleSystem(ParticleSystem* ps, unsigned int delta) {
         p->velocity = np->velocity;
         p->acceleration = np->acceleration;
         p->life = np->life;
+        p->totalLife = np->totalLife;
         i -= 1;
       }
     } else {
@@ -437,6 +464,7 @@ void renderParticleSystem(ParticleSystem const* ps) {
   unsigned int numTriangles = ps->model->numVertices / 4;
   for(unsigned int i = 0; i < ps->alive; ++i) {
     Particle const* p = &ps->particles[i];
+    glUniform1f(opacityUniformLocation, p->life/(float)p->totalLife);
     glUniform4fv(offsetUniformLocation, p->position.x, p->position.y, 0.0f, 0.0f);
     glDrawArrays(GL_TRIANGLES, 0, numTriangles);
   }

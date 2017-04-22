@@ -66,6 +66,7 @@ const linkShaderProgram = (vertexShaderId, fragmentShaderId) => {
 const glClearColor = (r, g, b, a) => gl.clearColor(r, g, b, a);
 const glEnable = x => gl.enable(x);
 const glDepthFunc = x => gl.depthFunc(x);
+const glBlendFunc = (x, y) => gl.blendFunc(x, y);
 const glClear = x => gl.clear(x);
 const glGetAttribLocation = (programId, namePtr, nameLen) => gl.getAttribLocation(glPrograms[programId], readCharStr(namePtr, nameLen));
 
@@ -75,6 +76,7 @@ const glGetUniformLocation = (programId, namePtr, nameLen) =>  {
 }
 const glUniform4fv = (locationId, x, y, z, w) => gl.uniform4fv(glUniformLocations[locationId], [x, y, z, w]);
 const glUniform1i = (locationId, x) => gl.uniform1i(glUniformLocations[locationId], x);
+const glUniform1f = (locationId, x) => gl.uniform1f(glUniformLocations[locationId], x);
 const glCreateBuffer = () => {
   glBuffers.push(gl.createBuffer());
   return glBuffers.length - 1;
@@ -111,7 +113,7 @@ const playAudio = (bufferPtr, bufferSize) => {
   source.start();
 }
 
-const env = {compileShader, linkShaderProgram, glClearColor, glEnable, glDepthFunc, glClear, glGetAttribLocation, glGetUniformLocation, glUniform4fv, glUniform1i, glCreateBuffer, glBindBuffer, glBufferData, glUseProgram, glEnableVertexAttribArray, glVertexAttribPointer, glDrawArrays, glCreateTexture, glBindTexture, glTexImage2D, glTexParameteri, glActiveTexture, consoleLog, playAudio, setScore};
+const env = {compileShader, linkShaderProgram, glClearColor, glEnable, glDepthFunc, glBlendFunc, glClear, glGetAttribLocation, glGetUniformLocation, glUniform4fv, glUniform1i, glUniform1f, glCreateBuffer, glBindBuffer, glBufferData, glUseProgram, glEnableVertexAttribArray, glVertexAttribPointer, glDrawArrays, glCreateTexture, glBindTexture, glTexImage2D, glTexParameteri, glActiveTexture, consoleLog, playAudio, setScore};
 
 fetchAndInstantiate('main.wasm', {env}).then(function(instance) {
   memory = instance.exports.memory;
