@@ -84,6 +84,11 @@ unsigned char const BALL_TEXTURE[] = {
   0xDD,0x00,0x00,0xFF, 0xFF,0x44,0x44,0xFF, 0xFF,0x88,0x88,0xFF, 0xDD,0x00,0x00,0xFF,
   0x00,0x00,0x00,0x00, 0xDD,0x00,0x00,0xFF, 0xDD,0x00,0x00,0xFF, 0x00,0x00,0x00,0x00
 };
+float const BALL_TAIL_VERTICES[] = {
+  -0.04,-0.04,0,0, 0.04,0.04,1,1, -0.04,0.04,0,1,
+  -0.04,-0.04,0,0, 0.04,-0.04,1,0, 0.04,0.04,1,1
+};
+
 unsigned char const BALL_TAIL_TEXTURE[] = {
   0x00,0x00,0x00,0x00, 0xFF,0x00,0x00,0xCC, 0xFF,0x00,0x00,0xCC, 0x00,0x00,0x00,0x00,
   0xFF,0x00,0x00,0xCC, 0xFF,0x00,0x00,0xCC, 0xFF,0x00,0x00,0xCC, 0xFF,0x00,0x00,0xCC,
@@ -266,7 +271,7 @@ void onInit() {
   unsigned int fieldTextureId = initTexture(FIELD_TEXTURE, 8, 8);
   unsigned int sparkTextureId = initTexture(SPARK_TEXTURE, 4, 4);
   initModel(&ballModel, BALL_VERTICES, sizeof(BALL_VERTICES)/sizeof(float), ballTextureId);
-  initModel(&ballTailModel, BALL_VERTICES, sizeof(BALL_VERTICES)/sizeof(float), ballTailTextureId);
+  initModel(&ballTailModel, BALL_TAIL_VERTICES, sizeof(BALL_TAIL_VERTICES)/sizeof(float), ballTailTextureId);
   initModel(&paddleModel, PADDLE_VERTICES, sizeof(PADDLE_VERTICES)/sizeof(float), paddleTextureId);
   initModel(&fieldModel, FIELD_VERTICES, sizeof(FIELD_VERTICES)/sizeof(float), fieldTextureId);
   initModel(&sparkModel, SPARK_VERTICES, sizeof(SPARK_VERTICES)/sizeof(float), sparkTextureId);
