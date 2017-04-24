@@ -251,7 +251,7 @@ void onInit() {
   glEnable(GL_DEPTH_TEST);
   glEnable(GL_BLEND);
   glDepthFunc(GL_LEQUAL);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   unsigned int vsId = compileShader(vertexShader, sizeof(vertexShader) - 1, GL_VERTEX_SHADER);
