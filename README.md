@@ -12,6 +12,8 @@ Run `make build` and `make install` in `tools`. This builds LLVM, clang, binarye
 
 Build by running `make` in each directory. Test using python3 by running `make serve` and browsing to localhost:8000.
 
+To build intermediate results from the C -> WASM compilation, try `make main.s` and `make main.wat`
+
 ### Add
 
 Simple function export example. Adds two numbers together and prints to console
@@ -19,6 +21,18 @@ Simple function export example. Adds two numbers together and prints to console
 ### Import/Export
 
 Same as Add, now with an added step of delegating the addition back to JavaScript.
+
+### Memory
+
+Poking an exported linear memory from JS and C.
+
+### Strings
+
+Manipulating JS strings in C.
+
+### Malloc
+
+Implementing a simple toy dynamic memory allocation scheme.
 
 ### Animation
 
