@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title></title>
+  </head>
+  <body>
+    <form action="" method="GET">
+      <input type="text" id="filename" name="wasm">
+      <input type="submit" value="Load">
+    </form>
+    <pre id="output"></pre>
+
+    <script>
+const filename = window.location.search.match('wasm=(.*)')[1] || 'print.wasm'
+document.getElementById('filename').value = filename;
+const output = document.getElementById('output');
+output.textContent += `~~~~~~~~ ${filename}  ~~~~~~~~\n`
+let memory;
+
+function print(ptr, len) {
+  const bytes = new Uint8Array(memory.buffer, ptr, len);
+  const text = new TextDecoder("utf-8").decode(bytes);
+  output.textContent += text;
+}
+function printInt(i) {
+  output.textContent += i;
+}
+function printFloat(f) {
+  output.textContent += f;
+}
+const env = {print, printInt, printFloat};
+fetchAndInstantiate(filename, {env}).then(function(instance) {
+  memory = instance.exports.memory;
+  instance.exports.main();
+});
+
+// fetchAndInstantiate() found in wasm-utils.js
+function fetchAndInstantiate(url, importObject) {
+  return fetch(url)
+    .then(response => response.arrayBuffer())
+    .then(bytes => WebAssembly.instantiate(bytes, importObject))
+    .then(results => results.instance);
+}
+    </script>
+  </body>
+</html>
